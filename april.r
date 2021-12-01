@@ -2,6 +2,8 @@ library(Seurat)
 library(foreach)
 library(dplyr)
 
+# sc-tutorial with latest Seurat and R 3.6 environment
+
 a = Sys.glob('/data/langenau/human_rms_pdxs/data_april/*Robj')
 
 for (i in a) {
@@ -19,7 +21,7 @@ for (i in  ls()) {
         ## seu = as.loom(seu, filename=paste0(i, '.loom'), verbose=T)
         ## seu$close_all()
         result[[i]] = seu
-        }
+    }
 }
 
 result = Reduce(merge, result)
@@ -77,6 +79,7 @@ write_csv(allmarkers, 'normal_muscle_res0.8_diffgenes.csv')
 
 erms.topsign = c("ITM2A", "FABP5", "EMILIN1", "RRBP1", "CCND1", "EMP3", "EIF4EBP1", "TSTA3", "ADA", "HMGA2")
 arms.topsign = c("HSPB2", "MYL4", "PIPOX", "TNNT2", "MYOG", "ENO3", "NRN1", "GYPC", "TSPAN3", "TFF3")
+
 library(patchwork)
 library(ggplot2)
 result@meta.data$age = apply(matrix(result@meta.data$orig.ident), 1, function(x) {paste(unlist(strsplit(x, '_'))[2:3], collapse='_')})
@@ -110,6 +113,22 @@ a=result[erms.topsign, ]@assays$RNA
 result@meta.data[, 'ERMS core signature'] = colMeans(as.matrix(a@data))
 a=result[arms.topsign, ]@assays$RNA
 result@meta.data[, 'ARMS core signature'] = colMeans(as.matrix(a@data))
+
+core.sig = read.table('../01_sc_rms/phaseA_explore_rms/tables_storage/RMS_core_t_test_pval0.05_fold1.5.xls')
+
+test = rowMeans(core.sig[,1:4]) - rowMeans(core.sig[,5:11])
+
+a=result[rownames(core.sig)[test<0], ]@assays$RNA
+result@meta.data[, 'ERMS core signature'] = colMeans(as.matrix(a@data))
+
+a=result[rownames(core.sig)[test>0], ]@assays$RNA
+result@meta.data[, 'ARMS core signature'] = colMeans(as.matrix(a@data))
+
+png('core_score_umap.png', width=3600, height=1350, res=300)
+p4 <- FeaturePlot(result, features=c("ARMS core signature", 'TNNT2', "HSPB2", 'MYL4',
+                                     'ERMS core signature', 'ITM2A', 'CCND1', 'HMGA2'), ncol=4)
+print(p4)
+dev.off()
 
 png('core_score_umap.png', width=3600, height=1350, res=300)
 p4 <- FeaturePlot(result, features=c("ARMS core signature", 'TNNT2', 'MYOG', 'MYL4',
